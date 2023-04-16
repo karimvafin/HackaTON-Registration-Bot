@@ -1,4 +1,9 @@
 async def on_startup(dp):
+
+    # подгружаем фильтры
+    import filters
+    filters.setup(dp)
+
     # уведомляем администраторов о запуске
     from utils.notify_admins import on_startup_notify
     await on_startup_notify(dp)
