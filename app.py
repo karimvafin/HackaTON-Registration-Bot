@@ -8,6 +8,19 @@ async def on_startup(dp):
     import middlewares
     middlewares.setup(dp)
 
+    from loader import db
+    from utils.db_api.db_gino import on_startup
+    print("Подключение к PostgreSQL...")
+    await on_startup(dp)
+
+    print("Удаление базы данных...")
+    await db.gino.drop_all()
+
+    print("Создание таблиц...")
+    await db.gino.create_all()
+
+    print("Done.")
+
     # уведомляем администраторов о запуске
     from utils.notify_admins import on_startup_notify
     await on_startup_notify(dp)

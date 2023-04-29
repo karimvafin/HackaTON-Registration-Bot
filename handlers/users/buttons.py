@@ -1,17 +1,19 @@
 from aiogram import types
-from aiogram.dispatcher import FSMContext
 
 from loader import dp
-from states import UserRegistration
+from utils.db_api import registration_commands
 
 
 @dp.message_handler(text='Мой профиль')
 @dp.message_handler(commands=['profile'])
-async def button_my_profile(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    await message.answer(f"Ваш профиль:\n\n"
-                         f"ФИО: {data.get('name')}\n"
-                         f"Возраст: {data.get('age')}\n"
-                         f"Город: {data.get('location')}\n"
-                         f"Место работы/учебы: {data.get('affiliation')}")
-
+async def button_my_profile(message: types.Message):
+    try:
+        reg = await registration_commands.select_registration_by_id(message.from_user.id)
+        await message.answer(f"Ваш профиль:\n\n"
+                             f"ФИО: {reg.name}\n"
+                             f"Возраст: {reg.age}\n"
+                             f"Город: {reg.location}\n"
+                             f"Место работы/учебы: {reg.affiliation}")
+    except Exception:
+        await message.answer("Вы еще не зарегистрировались.\n"
+                             "Для регистрации отправьте команду /registration")

@@ -6,3 +6,7 @@ class UserRegistration(StatesGroup):
     age = State()
     location = State()
     affiliation = State()
+
+
+class Accept(StatesGroup):
+    user_id = State()
