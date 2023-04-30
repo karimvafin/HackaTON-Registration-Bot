@@ -13,8 +13,8 @@ async def on_startup(dp):
     print("Подключение к PostgreSQL...")
     await on_startup(dp)
 
-    print("Удаление базы данных...")
-    await db.gino.drop_all()
+    # print("Удаление базы данных...")
+    # await db.gino.drop_all()
 
     print("Создание таблиц...")
     await db.gino.create_all()

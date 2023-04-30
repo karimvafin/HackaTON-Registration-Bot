@@ -8,7 +8,7 @@ class Registration(TimedBaseModel):
     name = Column(String(200))
     username = Column(String(50))
     status = Column(String(30))
-    age = Column(String(3))
+    age = Column(String(5))
     location = Column(String(20))
     affiliation = Column(String(20))
 

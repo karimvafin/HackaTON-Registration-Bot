@@ -7,6 +7,6 @@ ikb_menu = InlineKeyboardMarkup(row_width=2, inline_keyboard=[
     ],
     [
         InlineKeyboardButton(text="Город", callback_data="Город"),
-        InlineKeyboardButton(text="Место работы", callback_data="Место работы")
+        InlineKeyboardButton(text="Место учебы/работы", callback_data="Место работы")
     ]
 ])

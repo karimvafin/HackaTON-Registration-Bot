@@ -12,21 +12,79 @@ from states import UserRegistration
 from states.user_registration import Accept
 from utils.db_api import registration_commands
 from utils.misc import rate_limit
+from utils.validate_data import check_age
+
+
+async def continue_registration(reg):
+    if reg.name == 'None':
+        await UserRegistration.name.set()
+        return "Введите Ваше ФИО"
+    elif reg.age == 'None':
+        await UserRegistration.age.set()
+        return "Сколько Вам лет?"
+    elif reg.location == 'None':
+        await UserRegistration.location.set()
+        return "Из какого Вы города?"
+    elif reg.name == 'None':
+        await UserRegistration.affiliation.set()
+        return "Где Вы работаете/учитесь?"
 
 
 @rate_limit(limit=3)
 @dp.message_handler(Text('Регистрация'))
 @dp.message_handler(Command('registration'))
 async def button_registration(message: types.Message):
-    await message.answer(f'Начало регистрации\nВведите Ваше ФИО', reply_markup=kb_end_registration)
-    await UserRegistration.name.set()
+    reg = await registration_commands.select_registration_by_id(message.from_user.id)
+    if reg is None:
+        await message.answer(f'Начало регистрации\nВведите Ваше ФИО', reply_markup=kb_end_registration)
+        await UserRegistration.name.set()
+    else:
+        if reg.status == "created":
+            await message.answer("Вы уже зарегистрированы!\n"
+                                 "Для просмотра профиля, введите /profile\n"
+                                 "Чтобы изменить свои данные, введите /change_data")
+        elif reg.status == "unfinished":
+            await message.answer("Продолжение регистрации\n")
+            await message.answer(await continue_registration(reg), reply_markup=kb_end_registration)
 
 
 @dp.message_handler(Text("Приостановить регистрацию"), state=[UserRegistration.name, UserRegistration.age,
                                                               UserRegistration.location, UserRegistration.affiliation])
 async def stop_registration(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    name = data.get('name')
+    age = data.get('age')
+    location = data.get('location')
+    affiliation = data.get('affiliation')
+    if name is None:
+        name = "None"
+    if age is None:
+        age = "None"
+    if location is None:
+        location = "None"
+    if affiliation is None:
+        affiliation = "None"
+    reg = await registration_commands.select_registration_by_id(message.from_user.id)
+    if reg is None:
+        await registration_commands.register_user(user_id=message.from_user.id,
+                                                  name=name,
+                                                  username=message.from_user.username,
+                                                  status='unfinished',
+                                                  age=age,
+                                                  location=location,
+                                                  affiliation=affiliation)
+    else:
+        if reg.name == "None":
+            await reg.update(name=name).apply()
+        if reg.age == "None":
+            await reg.update(age=age).apply()
+        if reg.location == "None":
+            await reg.update(location=location).apply()
+        if reg.affiliation == "None":
+            await reg.update(affiliation=affiliation).apply()
+
     await state.finish()
-    await message.answer(text="Регистрация приостановлена. \n "
+    await message.answer(text="Регистрация приостановлена.\n"
                               "Чтобы продолжить регистрацию, введите команду /registration.", reply_markup=kb_menu)
 
 
@@ -41,12 +99,12 @@ async def get_name(message: types.Message, state: FSMContext):
 @dp.message_handler(state=UserRegistration.age)
 async def get_age(message: types.Message, state: FSMContext):
     answer = message.text  # ответ пользователя
-    if not answer.isdigit() or answer[0] == '0' or int(answer) < 1:
+    if not check_age(answer):
         await message.answer("Вы ввели некорректное число!")
         await message.answer("Сколько Вам лет?")
     else:
         await state.update_data(age=answer)  # сохраняем имя пользователя
-        await message.answer("Из каково Вы города?")
+        await message.answer("Из какого Вы города?")
         await UserRegistration.location.set()
 
 
@@ -69,19 +127,33 @@ async def get_affiliation(message: types.Message, state: FSMContext):
     age = data.get('age')
     location = data.get('location')
     affiliation = data.get('affiliation')
-    await registration_commands.register_user(user_id=message.from_user.id,
-                                              name=name,
-                                              username=message.from_user.username,
-                                              status='created',
-                                              age=age,
-                                              location=location,
-                                              affiliation=affiliation)
+    reg = await registration_commands.select_registration_by_id(message.from_user.id)
+    if reg is None:
+        await registration_commands.register_user(user_id=message.from_user.id,
+                                                  name=name,
+                                                  username=message.from_user.username,
+                                                  status='created',
+                                                  age=age,
+                                                  location=location,
+                                                  affiliation=affiliation)
+    else:
+        if reg.name == "None":
+            await reg.update(name=name).apply()
+        if reg.age == "None":
+            await reg.update(age=age).apply()
+        if reg.location == "None":
+            await reg.update(location=location).apply()
+        if reg.affiliation == "None":
+            await reg.update(affiliation=affiliation).apply()
+        await reg.update(status='created').apply()
+
+    reg = await registration_commands.select_registration_by_id(message.from_user.id)
     await message.answer(f"Ваш профиль:\n"
                          f"\n"
-                         f"ФИО: {data.get('name')}\n"
-                         f"Возраст: {data.get('age')}\n"
-                         f"Город: {data.get('location')}\n"
-                         f"Место работы/учебы: {data.get('affiliation')}")
+                         f"ФИО: {reg.name}\n"
+                         f"Возраст: {reg.age}\n"
+                         f"Город: {reg.location}\n"
+                         f"Место работы/учебы: {reg.affiliation}")
 
 
 @dp.message_handler(IsPrivate(), text='/registrations', user_id=admins)
